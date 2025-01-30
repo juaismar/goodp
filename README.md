@@ -1,0 +1,2 @@
+# goodp
+Generate .odp presentations
