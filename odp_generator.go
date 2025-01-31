@@ -220,6 +220,16 @@ func (g *ODPGenerator) Save(filename string) error {
 		return err
 	}
 
+	// Añadir configurations2/accelerator/current.xml
+	configWriter, err := zipWriter.Create("configurations2/accelerator/current.xml")
+	if err != nil {
+		return err
+	}
+	err = g.writeConfigurations(configWriter)
+	if err != nil {
+		return err
+	}
+
 	// Añadir manifest
 	manifestWriter, err := zipWriter.Create("META-INF/manifest.xml")
 	if err != nil {
@@ -482,6 +492,25 @@ func (g *ODPGenerator) writeSettings(writer io.Writer) error {
 	return tmpl.Execute(writer, g)
 }
 
+func (g *ODPGenerator) writeConfigurations(writer io.Writer) error {
+	configTemplate := `<?xml version="1.0" encoding="UTF-8"?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" 
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+                    oor:name="Accelerator" 
+                    oor:package="org.openoffice.Office">
+    <node oor:name="PresentationCommands">
+        <node oor:name="Defaults">
+            <node oor:name="Modules">
+                <node oor:name="com.sun.star.presentation.PresentationDocument"/>
+            </node>
+        </node>
+    </node>
+</oor:component-data>`
+
+	_, err := writer.Write([]byte(configTemplate))
+	return err
+}
+
 func (g *ODPGenerator) writeManifest(writer io.Writer) error {
 	manifestTemplate := `<?xml version="1.0" encoding="UTF-8"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
@@ -489,6 +518,7 @@ func (g *ODPGenerator) writeManifest(writer io.Writer) error {
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml"/>
+    <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="configurations2/accelerator/current.xml"/>
     {{range .Slides}}
         {{range .Images}}
     <manifest:file-entry manifest:media-type="image/{{extension .Name}}" manifest:full-path="{{.Name}}"/>
