@@ -292,12 +292,19 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                                          presentation:background-objects-visible="true"
                                          presentation:display-footer="true"
                                          presentation:display-page-number="false"
-                                         presentation:display-date-time="true">
-                <draw:fill>
-                    <draw:fill-image-size svg:width="{{.SlideSize.Width}}cm" 
-                                         svg:height="{{.SlideSize.Height}}cm"/>
-                </draw:fill>
-            </style:drawing-page-properties>
+                                         presentation:display-date-time="true"/>
+        </style:style>
+        <style:style style:name="gr1" style:family="graphic">
+            <style:graphic-properties draw:stroke="none" draw:fill="none" draw:textarea-horizontal-align="center"/>
+        </style:style>
+        <style:style style:name="gr2" style:family="graphic">
+            <style:graphic-properties draw:stroke="none" draw:fill="none"/>
+        </style:style>
+        <style:style style:name="P1" style:family="paragraph">
+            <style:paragraph-properties fo:text-align="center"/>
+        </style:style>
+        <style:style style:name="P2" style:family="paragraph">
+            <style:paragraph-properties fo:text-align="left"/>
         </style:style>
     </office:automatic-styles>
     <office:body>
@@ -306,9 +313,10 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
             <draw:page draw:name="page{{.Title}}" draw:style-name="dp1" draw:master-page-name="Default">
                 {{if .Title}}
                 <draw:frame draw:style-name="gr1" draw:text-style-name="P1" draw:layer="layout" 
-                           svg:width="{{$.SlideSize.Width}}cm" svg:height="3.506cm" 
+                           svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
+                           svg:height="3.506cm" 
                            svg:x="2cm" svg:y="1cm"
-                           presentation:class="title" presentation:user-transformed="true">
+                           presentation:class="title">
                     <draw:text-box>
                         <text:p text:style-name="P1">{{.Title}}</text:p>
                     </draw:text-box>
@@ -316,8 +324,10 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 {{end}}
                 {{if .Content}}
                 <draw:frame draw:style-name="gr2" draw:text-style-name="P2" draw:layer="layout"
-                           svg:width="{{$.SlideSize.Width}}cm" svg:height="13.23cm" svg:x="2cm" svg:y="5.5cm"
-                           presentation:class="outline" presentation:user-transformed="true">
+                           svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
+                           svg:height="13.23cm" 
+                           svg:x="2cm" svg:y="5.5cm"
+                           presentation:class="outline">
                     <draw:text-box>
                         <text:p text:style-name="P2">{{.Content}}</text:p>
                     </draw:text-box>
@@ -327,11 +337,10 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 <draw:frame draw:style-name="gr2" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
-                           presentation:class="outline" presentation:user-transformed="true">
+                           presentation:class="outline">
                     <draw:text-box>
                         <text:p>
-                            <text:span text:style-name="{{generateStyleName .Style}}"
-                                      >{{.Content}}</text:span>
+                            <text:span text:style-name="{{generateStyleName .Style}}">{{.Content}}</text:span>
                         </text:p>
                     </draw:text-box>
                 </draw:frame>
@@ -340,7 +349,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 <draw:frame draw:style-name="gr2" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
-                           presentation:class="graphic" presentation:user-transformed="true">
+                           presentation:class="graphic">
                     <draw:image xlink:href="{{.Name}}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
                 </draw:frame>
                 {{end}}
@@ -355,6 +364,9 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
 		"generateStyleName": func(style TextStyle) string {
 			styleCounter++
 			return fmt.Sprintf("T%d", styleCounter)
+		},
+		"sub": func(a, b float64) float64 {
+			return a - b
 		},
 	}).Parse(contentTemplate)
 	if err != nil {
