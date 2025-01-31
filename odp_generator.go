@@ -210,6 +210,16 @@ func (g *ODPGenerator) Save(filename string) error {
 		return err
 	}
 
+	// Añadir settings.xml
+	settingsWriter, err := zipWriter.Create("settings.xml")
+	if err != nil {
+		return err
+	}
+	err = g.writeSettings(settingsWriter)
+	if err != nil {
+		return err
+	}
+
 	// Añadir manifest
 	manifestWriter, err := zipWriter.Create("META-INF/manifest.xml")
 	if err != nil {
@@ -409,12 +419,64 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
 	return tmpl.Execute(writer, g)
 }
 
+func (g *ODPGenerator) writeSettings(writer io.Writer) error {
+	settingsTemplate := `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-settings xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" 
+                         xmlns:xlink="http://www.w3.org/1999/xlink" 
+                         xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" 
+                         xmlns:ooo="http://openoffice.org/2004/office" 
+                         office:version="1.2">
+    <office:settings>
+        <config:config-item-set config:name="ooo:view-settings">
+            <config:config-item config:name="VisibleAreaTop" config:type="int">0</config:config-item>
+            <config:config-item config:name="VisibleAreaLeft" config:type="int">0</config:config-item>
+            <config:config-item config:name="VisibleAreaWidth" config:type="int">{{printf "%.0f" (mul .SlideSize.Width 100)}}</config:config-item>
+            <config:config-item config:name="VisibleAreaHeight" config:type="int">{{printf "%.0f" (mul .SlideSize.Height 100)}}</config:config-item>
+            <config:config-item-map-indexed config:name="Views">
+                <config:config-item-map-entry>
+                    <config:config-item config:name="ViewId" config:type="string">view1</config:config-item>
+                    <config:config-item config:name="GridIsVisible" config:type="boolean">false</config:config-item>
+                    <config:config-item config:name="IsSnapToGrid" config:type="boolean">true</config:config-item>
+                    <config:config-item config:name="IsSnapToPageMargins" config:type="boolean">true</config:config-item>
+                    <config:config-item config:name="ZoomOnPage" config:type="boolean">true</config:config-item>
+                    <config:config-item config:name="SelectedPage" config:type="short">0</config:config-item>
+                </config:config-item-map-entry>
+            </config:config-item-map-indexed>
+        </config:config-item-set>
+        <config:config-item-set config:name="ooo:configuration-settings">
+            <config:config-item config:name="IsPrintDate" config:type="boolean">false</config:config-item>
+            <config:config-item config:name="IsPrintTime" config:type="boolean">false</config:config-item>
+            <config:config-item config:name="IsPrintNotes" config:type="boolean">false</config:config-item>
+            <config:config-item config:name="PrintQuality" config:type="int">0</config:config-item>
+            <config:config-item-map-indexed config:name="ForbiddenCharacters">
+                <config:config-item-map-entry>
+                    <config:config-item config:name="Language" config:type="string">es</config:config-item>
+                    <config:config-item config:name="Country" config:type="string">ES</config:config-item>
+                    <config:config-item config:name="Variant" config:type="string"/>
+                </config:config-item-map-entry>
+            </config:config-item-map-indexed>
+        </config:config-item-set>
+    </office:settings>
+</office:document-settings>`
+
+	tmpl, err := template.New("settings").Funcs(template.FuncMap{
+		"mul": func(a, b float64) float64 {
+			return a * b
+		},
+	}).Parse(settingsTemplate)
+	if err != nil {
+		return err
+	}
+	return tmpl.Execute(writer, g)
+}
+
 func (g *ODPGenerator) writeManifest(writer io.Writer) error {
 	manifestTemplate := `<?xml version="1.0" encoding="UTF-8"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
     <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml"/>
+    <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml"/>
     {{range .Slides}}
         {{range .Images}}
     <manifest:file-entry manifest:media-type="image/{{extension .Name}}" manifest:full-path="{{.Name}}"/>
