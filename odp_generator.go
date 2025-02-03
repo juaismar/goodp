@@ -30,10 +30,25 @@ var (
 	defaultSize43  = SlideSize{Width: 25.4, Height: 19.05}   // 4:3 (equivalente a 1024x768 en cm)
 )
 
+// Modificar la estructura BackgroundImage para soportar diferentes tipos de fondo
+type BackgroundType int
+
+const (
+	BackgroundImage BackgroundType = iota
+	BackgroundColor
+)
+
+type Background struct {
+	Type  BackgroundType
+	Data  []byte // Para imágenes
+	Name  string // Para imágenes
+	Color string // Para colores sólidos
+}
+
 type ODPGenerator struct {
 	Slides     []Slide
 	SlideSize  SlideSize
-	Background *BackgroundImage
+	Background *Background
 }
 
 type Slide struct {
@@ -42,7 +57,7 @@ type Slide struct {
 	TextBoxes    []TextBox
 	Images       []Image
 	currentStyle TextStyle
-	Background   *BackgroundImage
+	Background   *Background
 }
 
 type TextBox struct {
@@ -69,11 +84,6 @@ type TextStyle struct {
 	Color      string
 	Bold       bool
 	Italic     bool
-}
-
-type BackgroundImage struct {
-	Data []byte
-	Name string
 }
 
 // New crea una nueva instancia de ODPGenerator con tamaño 16:9 por defecto
@@ -179,10 +189,10 @@ func (g *ODPGenerator) AddImage(imageData []byte, extension string, x, y, width,
 
 // SetBackgroundImage establece una imagen de fondo para todas las diapositivas
 func (g *ODPGenerator) SetBackgroundImage(imageData []byte, extension string) error {
-	// Generar un nombre único para la imagen
 	imageName := fmt.Sprintf("media/background.%s", strings.ToLower(strings.TrimPrefix(extension, ".")))
 
-	g.Background = &BackgroundImage{
+	g.Background = &Background{
+		Type: BackgroundImage,
 		Data: imageData,
 		Name: imageName,
 	}
@@ -196,15 +206,37 @@ func (g *ODPGenerator) SetCurrentSlideBackground(imageData []byte, extension str
 		g.AddBlankSlide()
 	}
 
-	// Generar un nombre único para la imagen
 	lastSlide := &g.Slides[len(g.Slides)-1]
 	imageName := fmt.Sprintf("media/slide%d_background.%s",
 		len(g.Slides)-1,
 		strings.ToLower(strings.TrimPrefix(extension, ".")))
 
-	lastSlide.Background = &BackgroundImage{
+	lastSlide.Background = &Background{
+		Type: BackgroundImage,
 		Data: imageData,
 		Name: imageName,
+	}
+
+	return nil
+}
+
+// SetBackgroundColor establece un fondo de color para la presentación
+func (g *ODPGenerator) SetBackgroundColor(color string) {
+	g.Background = &Background{
+		Type:  BackgroundColor,
+		Color: color,
+	}
+}
+
+func (g *ODPGenerator) SetCurrentSlideBackgroundColor(color string) error {
+	if len(g.Slides) == 0 {
+		g.AddBlankSlide()
+	}
+
+	lastSlide := &g.Slides[len(g.Slides)-1]
+	lastSlide.Background = &Background{
+		Type:  BackgroundColor,
+		Color: color,
 	}
 
 	return nil
@@ -280,13 +312,12 @@ func (g *ODPGenerator) Save(filename string) error {
 		return err
 	}
 
-	// Añadir la imagen de fondo global si existe
-	if g.Background != nil {
+	// Añadir la imagen de fondo global si existe y es una imagen
+	if g.Background != nil && g.Background.Type == BackgroundImage {
 		imageWriter, err := zipWriter.Create(g.Background.Name)
 		if err != nil {
 			return err
 		}
-
 		_, err = imageWriter.Write(g.Background.Data)
 		if err != nil {
 			return err
@@ -295,7 +326,7 @@ func (g *ODPGenerator) Save(filename string) error {
 
 	// Añadir las imágenes de fondo por diapositiva
 	for _, slide := range g.Slides {
-		if slide.Background != nil {
+		if slide.Background != nil && slide.Background.Type == BackgroundImage {
 			imageWriter, err := zipWriter.Create(slide.Background.Name)
 			if err != nil {
 				return err
@@ -367,10 +398,15 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
         {{if .Background}}
         <style:style style:family="drawing-page" style:name="backgroundStyle">
             <style:drawing-page-properties 
+                {{if eq .Background.Type 0}}
                 draw:fill="bitmap" 
                 draw:fill-image-name="backgroundImage" 
                 style:repeat="stretch"
                 draw:background-size="border" 
+                {{else}}
+                draw:fill="solid"
+                draw:fill-color="{{.Background.Color}}"
+                {{end}}
                 presentation:background-objects-visible="true" 
                 presentation:background-visible="false"
                 presentation:display-header="false" 
@@ -383,10 +419,15 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
             {{if $slide.Background}}
             <style:style style:family="drawing-page" style:name="slideBackground{{$index}}">
                 <style:drawing-page-properties 
+                    {{if eq $slide.Background.Type 0}}
                     draw:fill="bitmap" 
                     draw:fill-image-name="slideBackground{{$index}}" 
                     style:repeat="stretch"
                     draw:background-size="border" 
+                    {{else}}
+                    draw:fill="solid"
+                    draw:fill-color="{{$slide.Background.Color}}"
+                    {{end}}
                     presentation:background-objects-visible="true" 
                     presentation:background-visible="false"
                     presentation:display-header="false" 
@@ -503,11 +544,11 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
                        xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
                        xmlns:xlink="http://www.w3.org/1999/xlink">
     <office:styles>
-        {{if .Background}}
+        {{if and .Background (eq .Background.Type 0)}}
         <draw:fill-image draw:name="backgroundImage" xlink:href="{{.Background.Name}}" xlink:show="embed" xlink:actuate="onLoad"/>
         {{end}}
         {{range $index, $slide := .Slides}}
-            {{if $slide.Background}}
+            {{if and $slide.Background (eq $slide.Background.Type 0)}}
             <draw:fill-image draw:name="slideBackground{{$index}}" xlink:href="{{$slide.Background.Name}}" xlink:show="embed" xlink:actuate="onLoad"/>
             {{end}}
         {{end}}

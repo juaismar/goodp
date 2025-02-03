@@ -42,6 +42,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Establecer un fondo de color global
+	//presentacion.SetBackgroundColor("#FF0000") // Fondo rojo para toda la presentación
+
 	// Añadir diapositiva y establecer su fondo específico
 	presentacion.AddBlankSlide()
 	imageData, err = os.ReadFile("./img/light-background.jpg")
@@ -64,6 +67,12 @@ func main() {
 	presentacion.AddTextBox("Texto en la parte inferior", 15, 15, 10, 3)
 
 	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
+
+	presentacion.AddSlide("Cuarta página", "")
+	err = presentacion.SetCurrentSlideBackgroundColor("#0000FF") // Fondo azul para esta diapositiva
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Guardar la presentación
 	err = presentacion.Save("Presentacion.odp")
