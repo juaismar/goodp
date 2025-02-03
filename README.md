@@ -19,23 +19,26 @@ go get github.com/tu-usuario/goodp
 
 ## Uso Básico
 
-```
+```go
 package main
+
 import (
-"log"
-"os"
-"goodp"
+    "log"
+    "os"
+    "goodp"
 )
+
 func main() {
-// Crear una nueva presentación (por defecto 16:9)
-presentacion := goodp.New()
-// Añadir una diapositiva con título
-presentacion.AddSlide("Mi Primera Presentación", "Contenido de ejemplo")
-// Guardar la presentación
-err := presentacion.Save("mi_presentacion.odp")
-if err != nil {
-log.Fatal(err)
-}
+    // Crear una nueva presentación (por defecto 16:9)
+    presentacion := goodp.New()
+
+    // Añadir una diapositiva con título
+    presentacion.AddSlide("Mi Primera Presentación", "Contenido de ejemplo")
+
+    // Guardar la presentación
+    if err := presentacion.Save("mi_presentacion.odp"); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
@@ -43,53 +46,75 @@ log.Fatal(err)
 
 ### Configurar el Tamaño de la Presentación
 
-```
+```go
 // Usar relación de aspecto 16:9 (por defecto)
 presentacion.SetSlideSize(goodp.AspectRatio169)
+
 // Usar relación de aspecto 4:3
 presentacion.SetSlideSize(goodp.AspectRatio43)
+
 // O establecer un tamaño personalizado (en centímetros)
 presentacion.SetCustomSlideSize(25.4, 19.05)
 ```
 
 ### Añadir Texto con Estilo
-```
+
+```go
+// Obtener referencia a la diapositiva
+slide := presentacion.AddBlankSlide()
+
 // Establecer estilo de texto (tamaño, fuente, color, negrita, cursiva)
-presentacion.SetTextStyle(24, "Arial", "#FF0000", true, false)
-// Añadir cuadro de texto (contenido, x, y, ancho, alto en cm)
-presentacion.AddTextBox("Texto con estilo", 2, 2, 10, 2)
+presentacion.SetTextStyle(slide, 24, "Arial", "#FF0000", true, false)
+
+// Añadir cuadro de texto (slide, contenido, x, y, ancho, alto en cm)
+presentacion.AddTextBox(slide, "Texto con estilo", 2, 2, 10, 2)
 ```
+
 ### Insertar Imágenes
-```
+
+```go
 // Leer imagen
 imageData, err := os.ReadFile("imagen.png")
 if err != nil {
-log.Fatal(err)
+    log.Fatal(err)
 }
-// Añadir imagen (datos, extensión, x, y, ancho, alto en cm)
-err = presentacion.AddImage(imageData, ".png", 15, 5, 10, 8)
-if err != nil {
-log.Fatal(err)
+
+// Obtener referencia a la diapositiva
+slide := presentacion.AddBlankSlide()
+
+// Añadir imagen (slide, datos, extensión, x, y, ancho, alto en cm)
+if err := presentacion.AddImage(slide, imageData, ".png", 15, 5, 10, 8); err != nil {
+    log.Fatal(err)
 }
 ```
+
 ### Establecer Fondos
-```
+
+```go
 // Establecer fondo de color para toda la presentación
 presentacion.SetBackgroundColor("#FF0000")
-// O establecer una imagen de fondo
+
+// O establecer una imagen de fondo global
 imageData, err := os.ReadFile("fondo.jpg")
 if err != nil {
-log.Fatal(err)
+    log.Fatal(err)
 }
-err = presentacion.SetBackgroundImage(imageData, ".jpg")
-if err != nil {
-log.Fatal(err)
+if err := presentacion.SetBackgroundImage(imageData, ".jpg"); err != nil {
+    log.Fatal(err)
 }
-// Establecer fondo solo para la diapositiva actual
-err = presentacion.SetCurrentSlideBackground(imageData, ".jpg")
-// O un color de fondo
-err = presentacion.SetCurrentSlideBackgroundColor("#0000FF")
+
+// Establecer fondo solo para una diapositiva específica
+slide := presentacion.AddBlankSlide()
+if err := presentacion.SetSlideBackground(slide, imageData, ".jpg"); err != nil {
+    log.Fatal(err)
+}
+
+// O un color de fondo específico para una diapositiva
+if err := presentacion.SetSlideBackgroundColor(slide, "#0000FF"); err != nil {
+    log.Fatal(err)
+}
 ```
+
 ## Ejemplo Completo
 
 Puedes encontrar un ejemplo completo en el archivo [ejemplo_uso.go](example/ejemplo_uso.go).
