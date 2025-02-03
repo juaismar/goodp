@@ -115,30 +115,31 @@ func (g *ODPGenerator) SetCustomSlideSize(width, height float64) {
 	}
 }
 
-// AddSlide añade una nueva diapositiva a la presentación
-func (g *ODPGenerator) AddSlide(title string, content string) {
+// AddSlide añade una nueva diapositiva a la presentación y devuelve un puntero a ella
+func (g *ODPGenerator) AddSlide(title string, content string) *Slide {
 	g.Slides = append(g.Slides, Slide{
 		Title:   title,
 		Content: content,
 	})
+	return &g.Slides[len(g.Slides)-1]
 }
 
-// AddBlankSlide añade una diapositiva en blanco a la presentación
-func (g *ODPGenerator) AddBlankSlide() {
+// AddBlankSlide añade una diapositiva en blanco a la presentación y devuelve un puntero a ella
+func (g *ODPGenerator) AddBlankSlide() *Slide {
 	g.Slides = append(g.Slides, Slide{
 		Title:   "",
 		Content: "",
 	})
+	return &g.Slides[len(g.Slides)-1]
 }
 
 // SetTextStyle establece el estilo para el próximo texto que se añada
-func (g *ODPGenerator) SetTextStyle(fontSize float64, fontFamily, color string, bold, italic bool) {
+func (g *ODPGenerator) SetTextStyle(slide *Slide, fontSize float64, fontFamily, color string, bold, italic bool) {
 	if len(g.Slides) == 0 {
 		g.AddBlankSlide()
 	}
 
-	lastSlide := &g.Slides[len(g.Slides)-1]
-	lastSlide.currentStyle = TextStyle{
+	slide.currentStyle = TextStyle{
 		FontSize:   fmt.Sprintf("%.2fpt", fontSize),
 		FontFamily: fontFamily,
 		Color:      color,
@@ -148,34 +149,79 @@ func (g *ODPGenerator) SetTextStyle(fontSize float64, fontFamily, color string, 
 }
 
 // AddTextBox añade un cuadro de texto a la última diapositiva
-func (g *ODPGenerator) AddTextBox(content string, x, y, width, height float64) {
+func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64) {
 	if len(g.Slides) == 0 {
 		g.AddBlankSlide()
 	}
 
-	lastSlide := &g.Slides[len(g.Slides)-1]
-	lastSlide.TextBoxes = append(lastSlide.TextBoxes, TextBox{
+	slide.TextBoxes = append(slide.TextBoxes, TextBox{
 		Content: content,
 		X:       fmt.Sprintf("%.2fcm", x),
 		Y:       fmt.Sprintf("%.2fcm", y),
 		Width:   fmt.Sprintf("%.2fcm", width),
 		Height:  fmt.Sprintf("%.2fcm", height),
-		Style:   lastSlide.currentStyle, // Usar el estilo actual
+		Style:   slide.currentStyle, // Usar el estilo actual
 	})
 }
 
-// AddImage añade una imagen a la última diapositiva
-func (g *ODPGenerator) AddImage(imageData []byte, extension string, x, y, width, height float64) error {
-	if len(g.Slides) == 0 {
-		g.AddBlankSlide()
+// AddImage añade una imagen a la diapositiva especificada.
+// El parámetro extension debe incluir el punto (por ejemplo: ".jpg", ".png")
+func (g *ODPGenerator) AddImage(slide *Slide, imageData []byte, extension string, x, y, width, height float64) error {
+	// Validar que el slide pertenece a esta presentación
+	slideIndex := -1
+	for i := range g.Slides {
+		if &g.Slides[i] == slide {
+			slideIndex = i
+			break
+		}
+	}
+	if slideIndex == -1 {
+		return fmt.Errorf("la diapositiva especificada no pertenece a esta presentación")
+	}
+
+	// Validar la extensión
+	extension = strings.ToLower(strings.TrimSpace(extension))
+	if !strings.HasPrefix(extension, ".") {
+		extension = "." + extension
+	}
+
+	// Validar que sea una extensión de imagen soportada
+	validExtensions := map[string]bool{
+		".jpg": true, ".jpeg": true,
+		".png": true,
+		".gif": true,
+		".bmp": true,
+		".svg": true,
+	}
+	if !validExtensions[extension] {
+		return fmt.Errorf("formato de imagen no soportado: %s", extension)
+	}
+
+	// Validar que imageData no esté vacío
+	if len(imageData) == 0 {
+		return fmt.Errorf("los datos de la imagen están vacíos")
+	}
+
+	// Validar dimensiones
+	if width <= 0 || height <= 0 {
+		return fmt.Errorf("las dimensiones de la imagen deben ser positivas")
+	}
+
+	// Validar que la imagen cabe en la diapositiva
+	if x < 0 || y < 0 ||
+		x+width > g.SlideSize.Width ||
+		y+height > g.SlideSize.Height {
+		return fmt.Errorf("la imagen se sale de los límites de la diapositiva (%.2f x %.2f)",
+			g.SlideSize.Width, g.SlideSize.Height)
 	}
 
 	// Generar un nombre único para la imagen
-	imageName := fmt.Sprintf("Pictures/%d.%s", len(g.Slides[len(g.Slides)-1].Images),
-		strings.ToLower(strings.TrimPrefix(extension, ".")))
+	imageName := fmt.Sprintf("Pictures/slide%d_image%d%s",
+		slideIndex,
+		len(slide.Images),
+		extension)
 
-	lastSlide := &g.Slides[len(g.Slides)-1]
-	lastSlide.Images = append(lastSlide.Images, Image{
+	slide.Images = append(slide.Images, Image{
 		Data:   imageData,
 		X:      fmt.Sprintf("%.2fcm", x),
 		Y:      fmt.Sprintf("%.2fcm", y),
@@ -200,18 +246,47 @@ func (g *ODPGenerator) SetBackgroundImage(imageData []byte, extension string) er
 	return nil
 }
 
-// SetCurrentSlideBackground establece una imagen de fondo para la diapositiva actual
-func (g *ODPGenerator) SetCurrentSlideBackground(imageData []byte, extension string) error {
-	if len(g.Slides) == 0 {
-		g.AddBlankSlide()
+// SetSlideBackground establece una imagen de fondo para la diapositiva especificada.
+// El parámetro extension debe incluir el punto (por ejemplo: ".jpg", ".png")
+func (g *ODPGenerator) SetSlideBackground(slide *Slide, imageData []byte, extension string) error {
+	// Validar que el slide pertenece a esta presentación
+	slideIndex := -1
+	for i := range g.Slides {
+		if &g.Slides[i] == slide {
+			slideIndex = i
+			break
+		}
+	}
+	if slideIndex == -1 {
+		return fmt.Errorf("la diapositiva especificada no pertenece a esta presentación")
 	}
 
-	lastSlide := &g.Slides[len(g.Slides)-1]
-	imageName := fmt.Sprintf("media/slide%d_background.%s",
-		len(g.Slides)-1,
-		strings.ToLower(strings.TrimPrefix(extension, ".")))
+	// Validar la extensión
+	extension = strings.ToLower(strings.TrimSpace(extension))
+	if !strings.HasPrefix(extension, ".") {
+		extension = "." + extension
+	}
 
-	lastSlide.Background = &Background{
+	// Validar que sea una extensión de imagen soportada
+	validExtensions := map[string]bool{
+		".jpg": true, ".jpeg": true,
+		".png": true,
+		".gif": true,
+		".bmp": true,
+		".svg": true,
+	}
+	if !validExtensions[extension] {
+		return fmt.Errorf("formato de imagen no soportado: %s", extension)
+	}
+
+	// Validar que imageData no esté vacío
+	if len(imageData) == 0 {
+		return fmt.Errorf("los datos de la imagen están vacíos")
+	}
+
+	imageName := fmt.Sprintf("media/slide%d_background%s", slideIndex, extension)
+
+	slide.Background = &Background{
 		Type: BackgroundImage,
 		Data: imageData,
 		Name: imageName,
@@ -228,13 +303,38 @@ func (g *ODPGenerator) SetBackgroundColor(color string) {
 	}
 }
 
-func (g *ODPGenerator) SetCurrentSlideBackgroundColor(color string) error {
-	if len(g.Slides) == 0 {
-		g.AddBlankSlide()
+// SetSlideBackgroundColor establece un color de fondo para la diapositiva especificada.
+// El color debe estar en formato hexadecimal (#RRGGBB) o ser un nombre de color válido.
+func (g *ODPGenerator) SetSlideBackgroundColor(slide *Slide, color string) error {
+	// Validar que el slide pertenece a esta presentación
+	slideFound := false
+	for i := range g.Slides {
+		if &g.Slides[i] == slide {
+			slideFound = true
+			break
+		}
+	}
+	if !slideFound {
+		return fmt.Errorf("la diapositiva especificada no pertenece a esta presentación")
 	}
 
-	lastSlide := &g.Slides[len(g.Slides)-1]
-	lastSlide.Background = &Background{
+	// Validar el formato del color
+	color = strings.TrimSpace(color)
+	if !strings.HasPrefix(color, "#") {
+		color = "#" + color
+	}
+	if len(color) != 7 {
+		return fmt.Errorf("formato de color inválido: debe ser #RRGGBB")
+	}
+
+	// Validar que los caracteres sean hexadecimales válidos
+	for _, c := range color[1:] {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return fmt.Errorf("formato de color inválido: caracteres no hexadecimales")
+		}
+	}
+
+	slide.Background = &Background{
 		Type:  BackgroundColor,
 		Color: color,
 	}

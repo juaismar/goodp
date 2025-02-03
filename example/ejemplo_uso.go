@@ -18,7 +18,7 @@ func main() {
 	// presentacion.SetCustomSlideSize(25.4, 14.29)
 
 	// Añadir una diapositiva con título
-	presentacion.AddSlide("Primera página", "")
+	silde1 := presentacion.AddSlide("Primera página", "")
 
 	// Leer la imagen
 	imageData, err := os.ReadFile("./img/grafica1.png")
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	// Añadir la imagen (usando la extensión del archivo)
-	err = presentacion.AddImage(imageData, ".png", 15, 5, 10, 8)
+	err = presentacion.AddImage(silde1, imageData, ".png", 15, 5, 10, 8)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,30 +46,30 @@ func main() {
 	//presentacion.SetBackgroundColor("#FF0000") // Fondo rojo para toda la presentación
 
 	// Añadir diapositiva y establecer su fondo específico
-	presentacion.AddBlankSlide()
+	silde2 := presentacion.AddBlankSlide()
 	imageData, err = os.ReadFile("./img/light-background.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = presentacion.SetCurrentSlideBackground(imageData, ".jpg")
+	err = presentacion.SetSlideBackground(silde2, imageData, ".jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Añadir cuadros de texto en diferentes posiciones
 	// Los parámetros son: contenido, x, y, ancho, alto (en centímetros)
-	presentacion.AddTextBox("Texto en la esquina superior", 2, 2, 10, 2)
+	presentacion.AddTextBox(silde2, "Texto en la esquina superior", 2, 2, 10, 2)
 
-	presentacion.SetTextStyle(24, "Arial", "#FF0000", true, false) // Rojo, negrita
-	presentacion.AddTextBox("Texto en el centro", 10, 8, 8, 4)
+	presentacion.SetTextStyle(silde2, 24, "Arial", "#FF0000", true, false) // Rojo, negrita
+	presentacion.AddTextBox(silde2, "Texto en el centro", 10, 8, 8, 4)
 
-	presentacion.SetTextStyle(18, "Times New Roman", "#0000FF", false, true) // Azul, cursiva
-	presentacion.AddTextBox("Texto en la parte inferior", 15, 15, 10, 3)
+	presentacion.SetTextStyle(silde2, 18, "Times New Roman", "#0000FF", false, true) // Azul, cursiva
+	presentacion.AddTextBox(silde2, "Texto en la parte inferior", 15, 15, 10, 3)
 
 	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
 
-	presentacion.AddSlide("Cuarta página", "")
-	err = presentacion.SetCurrentSlideBackgroundColor("#0000FF") // Fondo azul para esta diapositiva
+	silde4 := presentacion.AddSlide("Cuarta página", "")
+	err = presentacion.SetSlideBackgroundColor(silde4, "#0000FF") // Fondo azul para esta diapositiva
 	if err != nil {
 		log.Fatal(err)
 	}
