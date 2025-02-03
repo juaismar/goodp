@@ -31,8 +31,9 @@ var (
 )
 
 type ODPGenerator struct {
-	Slides    []Slide
-	SlideSize SlideSize
+	Slides     []Slide
+	SlideSize  SlideSize
+	Background *BackgroundImage
 }
 
 type Slide struct {
@@ -67,6 +68,11 @@ type TextStyle struct {
 	Color      string
 	Bold       bool
 	Italic     bool
+}
+
+type BackgroundImage struct {
+	Data []byte
+	Name string
 }
 
 // New crea una nueva instancia de ODPGenerator con tamaño 16:9 por defecto
@@ -170,6 +176,19 @@ func (g *ODPGenerator) AddImage(imageData []byte, extension string, x, y, width,
 	return nil
 }
 
+// SetBackgroundImage establece una imagen de fondo para todas las diapositivas
+func (g *ODPGenerator) SetBackgroundImage(imageData []byte, extension string) error {
+	// Generar un nombre único para la imagen
+	imageName := fmt.Sprintf("media/background.%s", strings.ToLower(strings.TrimPrefix(extension, ".")))
+
+	g.Background = &BackgroundImage{
+		Data: imageData,
+		Name: imageName,
+	}
+
+	return nil
+}
+
 // Save guarda la presentación en un archivo ODP
 func (g *ODPGenerator) Save(filename string) error {
 	if !strings.HasSuffix(filename, ".odp") {
@@ -240,6 +259,19 @@ func (g *ODPGenerator) Save(filename string) error {
 		return err
 	}
 
+	// Añadir la imagen de fondo si existe
+	if g.Background != nil {
+		imageWriter, err := zipWriter.Create(g.Background.Name)
+		if err != nil {
+			return err
+		}
+
+		_, err = imageWriter.Write(g.Background.Data)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Añadir las imágenes al archivo ZIP
 	for _, slide := range g.Slides {
 		for _, img := range slide.Images {
@@ -297,6 +329,21 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
     <office:scripts/>
     <office:font-face-decls/>
     <office:automatic-styles>
+        {{if .Background}}
+        <style:style style:family="drawing-page" style:name="backgroundStyle">
+            <style:drawing-page-properties 
+                draw:fill="bitmap" 
+                draw:fill-image-name="backgroundImage" 
+                style:repeat="stretch"
+                draw:background-size="border" 
+                presentation:background-objects-visible="true" 
+                presentation:background-visible="false"
+                presentation:display-header="false" 
+                presentation:display-footer="false" 
+                presentation:display-page-number="false" 
+                presentation:display-date-time="false"/>
+        </style:style>
+        {{end}}
         <style:style style:name="dp1" style:family="drawing-page">
             <style:drawing-page-properties presentation:background-visible="true"
                                          presentation:background-objects-visible="true"
@@ -320,7 +367,13 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
     <office:body>
         <office:presentation>
             {{range .Slides}}
-            <draw:page draw:name="page{{.Title}}" draw:style-name="dp1" draw:master-page-name="Default">
+            <draw:page draw:name="page{{.Title}}" 
+                      {{if $.Background}}
+                      draw:style-name="backgroundStyle"
+                      {{else}}
+                      draw:style-name="dp1"
+                      {{end}}
+                      draw:master-page-name="Default">
                 {{if .Title}}
                 <draw:frame draw:style-name="gr1" draw:text-style-name="P1" draw:layer="layout" 
                            svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
@@ -393,8 +446,12 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
                        xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
                        xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0"
                        xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
-                       xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0">
+                       xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+                       xmlns:xlink="http://www.w3.org/1999/xlink">
     <office:styles>
+        {{if .Background}}
+        <draw:fill-image draw:name="backgroundImage" xlink:href="{{.Background.Name}}" xlink:show="embed" xlink:actuate="onLoad"/>
+        {{end}}
         {{$counter := 0}}
         {{range .Slides}}
             {{range .TextBoxes}}
@@ -413,8 +470,13 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
     </office:styles>
     <office:master-styles>
         <style:master-page style:name="Default" style:page-layout-name="PM1">
-            <style:drawing-page-properties presentation:background-visible="true"
-                                         presentation:background-objects-visible="true"/>
+            <style:drawing-page-properties 
+                presentation:background-visible="true"
+                presentation:background-objects-visible="true"
+                draw:fill="bitmap"
+                draw:fill-image-name="backgroundImage"
+                style:repeat="stretch"
+                draw:background-size="border"/>
         </style:master-page>
     </office:master-styles>
     <office:automatic-styles>
@@ -519,6 +581,9 @@ func (g *ODPGenerator) writeManifest(writer io.Writer) error {
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml"/>
     <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="configurations2/accelerator/current.xml"/>
+    {{if .Background}}
+    <manifest:file-entry manifest:media-type="image/{{extension .Background.Name}}" manifest:full-path="{{.Background.Name}}"/>
+    {{end}}
     {{range .Slides}}
         {{range .Images}}
     <manifest:file-entry manifest:media-type="image/{{extension .Name}}" manifest:full-path="{{.Name}}"/>

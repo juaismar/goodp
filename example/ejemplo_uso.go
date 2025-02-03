@@ -32,6 +32,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Establecer una imagen de fondo
+	imageData, err = os.ReadFile("./img/gradient-background.jpg")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = presentacion.SetBackgroundImage(imageData, ".jpg")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Añadir otra diapositiva con más imágenes
 	presentacion.AddBlankSlide()
 	// Añadir cuadros de texto en diferentes posiciones
