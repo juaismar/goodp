@@ -42,6 +42,7 @@ type Slide struct {
 	TextBoxes    []TextBox
 	Images       []Image
 	currentStyle TextStyle
+	Background   *BackgroundImage
 }
 
 type TextBox struct {
@@ -189,6 +190,26 @@ func (g *ODPGenerator) SetBackgroundImage(imageData []byte, extension string) er
 	return nil
 }
 
+// SetCurrentSlideBackground establece una imagen de fondo para la diapositiva actual
+func (g *ODPGenerator) SetCurrentSlideBackground(imageData []byte, extension string) error {
+	if len(g.Slides) == 0 {
+		g.AddBlankSlide()
+	}
+
+	// Generar un nombre único para la imagen
+	lastSlide := &g.Slides[len(g.Slides)-1]
+	imageName := fmt.Sprintf("media/slide%d_background.%s",
+		len(g.Slides)-1,
+		strings.ToLower(strings.TrimPrefix(extension, ".")))
+
+	lastSlide.Background = &BackgroundImage{
+		Data: imageData,
+		Name: imageName,
+	}
+
+	return nil
+}
+
 // Save guarda la presentación en un archivo ODP
 func (g *ODPGenerator) Save(filename string) error {
 	if !strings.HasSuffix(filename, ".odp") {
@@ -259,7 +280,7 @@ func (g *ODPGenerator) Save(filename string) error {
 		return err
 	}
 
-	// Añadir la imagen de fondo si existe
+	// Añadir la imagen de fondo global si existe
 	if g.Background != nil {
 		imageWriter, err := zipWriter.Create(g.Background.Name)
 		if err != nil {
@@ -269,6 +290,20 @@ func (g *ODPGenerator) Save(filename string) error {
 		_, err = imageWriter.Write(g.Background.Data)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Añadir las imágenes de fondo por diapositiva
+	for _, slide := range g.Slides {
+		if slide.Background != nil {
+			imageWriter, err := zipWriter.Create(slide.Background.Name)
+			if err != nil {
+				return err
+			}
+			_, err = imageWriter.Write(slide.Background.Data)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -344,6 +379,23 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 presentation:display-date-time="false"/>
         </style:style>
         {{end}}
+        {{range $index, $slide := .Slides}}
+            {{if $slide.Background}}
+            <style:style style:family="drawing-page" style:name="slideBackground{{$index}}">
+                <style:drawing-page-properties 
+                    draw:fill="bitmap" 
+                    draw:fill-image-name="slideBackground{{$index}}" 
+                    style:repeat="stretch"
+                    draw:background-size="border" 
+                    presentation:background-objects-visible="true" 
+                    presentation:background-visible="false"
+                    presentation:display-header="false" 
+                    presentation:display-footer="false" 
+                    presentation:display-page-number="false" 
+                    presentation:display-date-time="false"/>
+            </style:style>
+            {{end}}
+        {{end}}
         <style:style style:name="dp1" style:family="drawing-page">
             <style:drawing-page-properties presentation:background-visible="true"
                                          presentation:background-objects-visible="true"
@@ -366,9 +418,11 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
     </office:automatic-styles>
     <office:body>
         <office:presentation>
-            {{range .Slides}}
+            {{range $index, $slide := .Slides}}
             <draw:page draw:name="page{{.Title}}" 
-                      {{if $.Background}}
+                      {{if $slide.Background}}
+                      draw:style-name="slideBackground{{$index}}"
+                      {{else if $.Background}}
                       draw:style-name="backgroundStyle"
                       {{else}}
                       draw:style-name="dp1"
@@ -451,6 +505,11 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
     <office:styles>
         {{if .Background}}
         <draw:fill-image draw:name="backgroundImage" xlink:href="{{.Background.Name}}" xlink:show="embed" xlink:actuate="onLoad"/>
+        {{end}}
+        {{range $index, $slide := .Slides}}
+            {{if $slide.Background}}
+            <draw:fill-image draw:name="slideBackground{{$index}}" xlink:href="{{$slide.Background.Name}}" xlink:show="embed" xlink:actuate="onLoad"/>
+            {{end}}
         {{end}}
         {{$counter := 0}}
         {{range .Slides}}
@@ -585,6 +644,9 @@ func (g *ODPGenerator) writeManifest(writer io.Writer) error {
     <manifest:file-entry manifest:media-type="image/{{extension .Background.Name}}" manifest:full-path="{{.Background.Name}}"/>
     {{end}}
     {{range .Slides}}
+        {{if .Background}}
+        <manifest:file-entry manifest:media-type="image/{{extension .Background.Name}}" manifest:full-path="{{.Background.Name}}"/>
+        {{end}}
         {{range .Images}}
     <manifest:file-entry manifest:media-type="image/{{extension .Name}}" manifest:full-path="{{.Name}}"/>
         {{end}}
