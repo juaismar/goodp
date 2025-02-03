@@ -20,7 +20,6 @@ go get github.com/tu-usuario/goodp
 ## Uso Básico
 
 ```
-go
 package main
 import (
 "log"
@@ -44,23 +43,24 @@ log.Fatal(err)
 
 ### Configurar el Tamaño de la Presentación
 
-go
+```
 // Usar relación de aspecto 16:9 (por defecto)
 presentacion.SetSlideSize(goodp.AspectRatio169)
 // Usar relación de aspecto 4:3
 presentacion.SetSlideSize(goodp.AspectRatio43)
 // O establecer un tamaño personalizado (en centímetros)
 presentacion.SetCustomSlideSize(25.4, 19.05)
+```
 
 ### Añadir Texto con Estilo
-go
+```
 // Establecer estilo de texto (tamaño, fuente, color, negrita, cursiva)
 presentacion.SetTextStyle(24, "Arial", "#FF0000", true, false)
 // Añadir cuadro de texto (contenido, x, y, ancho, alto en cm)
 presentacion.AddTextBox("Texto con estilo", 2, 2, 10, 2)
-
+```
 ### Insertar Imágenes
-go
+```
 // Leer imagen
 imageData, err := os.ReadFile("imagen.png")
 if err != nil {
@@ -71,9 +71,9 @@ err = presentacion.AddImage(imageData, ".png", 15, 5, 10, 8)
 if err != nil {
 log.Fatal(err)
 }
-
+```
 ### Establecer Fondos
-go
+```
 // Establecer fondo de color para toda la presentación
 presentacion.SetBackgroundColor("#FF0000")
 // O establecer una imagen de fondo
@@ -89,7 +89,7 @@ log.Fatal(err)
 err = presentacion.SetCurrentSlideBackground(imageData, ".jpg")
 // O un color de fondo
 err = presentacion.SetCurrentSlideBackgroundColor("#0000FF")
-
+```
 ## Ejemplo Completo
 
 Puedes encontrar un ejemplo completo en el archivo [ejemplo_uso.go](example/ejemplo_uso.go).
