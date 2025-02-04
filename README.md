@@ -5,7 +5,7 @@ GOODP es una biblioteca en Go para crear presentaciones en formato OpenDocument 
 ## Instalación
 
 ```bash
-go get github.com/tu-usuario/goodp
+go get github.com/juaismar/goodp
 ```
 
 ## Características
