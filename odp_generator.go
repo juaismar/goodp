@@ -342,12 +342,8 @@ func (g *ODPGenerator) SetSlideBackgroundColor(slide *Slide, color string) error
 	return nil
 }
 
-// Save guarda la presentación en un archivo ODP
-func (g *ODPGenerator) Save(filename string) error {
-	if !strings.HasSuffix(filename, ".odp") {
-		filename += ".odp"
-	}
-
+// SaveStream genera y devuelve los bytes del archivo ODP
+func (g *ODPGenerator) SaveStream() ([]byte, error) {
 	// Crear el archivo ZIP (ODP es un archivo ZIP)
 	buf := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buf)
@@ -355,72 +351,72 @@ func (g *ODPGenerator) Save(filename string) error {
 	// Añadir mimetype
 	mimetypeWriter, err := zipWriter.Create("mimetype")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = mimetypeWriter.Write([]byte("application/vnd.oasis.opendocument.presentation"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir content.xml
 	contentWriter, err := zipWriter.Create("content.xml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = g.writeContent(contentWriter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir styles.xml
 	stylesWriter, err := zipWriter.Create("styles.xml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = g.writeStyles(stylesWriter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir settings.xml
 	settingsWriter, err := zipWriter.Create("settings.xml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = g.writeSettings(settingsWriter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir configurations2/accelerator/current.xml
 	configWriter, err := zipWriter.Create("configurations2/accelerator/current.xml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = g.writeConfigurations(configWriter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir manifest
 	manifestWriter, err := zipWriter.Create("META-INF/manifest.xml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = g.writeManifest(manifestWriter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Añadir la imagen de fondo global si existe y es una imagen
 	if g.Background != nil && g.Background.Type == BackgroundImage {
 		imageWriter, err := zipWriter.Create(g.Background.Name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		_, err = imageWriter.Write(g.Background.Data)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -429,11 +425,11 @@ func (g *ODPGenerator) Save(filename string) error {
 		if slide.Background != nil && slide.Background.Type == BackgroundImage {
 			imageWriter, err := zipWriter.Create(slide.Background.Name)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			_, err = imageWriter.Write(slide.Background.Data)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -443,12 +439,12 @@ func (g *ODPGenerator) Save(filename string) error {
 		for _, img := range slide.Images {
 			imageWriter, err := zipWriter.Create(img.Name)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			_, err = imageWriter.Write(img.Data)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -456,11 +452,26 @@ func (g *ODPGenerator) Save(filename string) error {
 	// Cerrar el ZIP
 	err = zipWriter.Close()
 	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Modificar Save para usar SaveStream
+func (g *ODPGenerator) Save(filename string) error {
+	if !strings.HasSuffix(filename, ".odp") {
+		filename += ".odp"
+	}
+
+	// Obtener los bytes usando SaveStream
+	data, err := g.SaveStream()
+	if err != nil {
 		return err
 	}
 
 	// Escribir el archivo
-	return os.WriteFile(filename, buf.Bytes(), 0644)
+	return os.WriteFile(filename, data, 0644)
 }
 
 func (g *ODPGenerator) writeContent(writer io.Writer) error {
