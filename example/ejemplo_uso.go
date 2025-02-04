@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"goodp"
+	"github.com/juaismar/goodp"
 )
 
 func main() {
