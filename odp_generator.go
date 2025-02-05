@@ -571,7 +571,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
     <office:body>
         <office:presentation>
             {{range $index, $slide := .Slides}}
-            <draw:page draw:name="page{{.Title}}" 
+            <draw:page draw:name="page{{$index}}" 
                       {{if $slide.Background}}
                       draw:style-name="slideBackground{{$index}}"
                       {{else if $.Background}}
