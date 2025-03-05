@@ -49,6 +49,7 @@ type ODPGenerator struct {
 	Slides     []Slide
 	SlideSize  SlideSize
 	Background *Background
+	lastZIndex int // Nuevo campo para trackear el último Z-index
 }
 
 type Slide struct {
@@ -67,6 +68,7 @@ type TextBox struct {
 	Width   string // Ancho en cm
 	Height  string // Alto en cm
 	Style   TextStyle
+	ZIndex  int
 }
 
 type Image struct {
@@ -76,6 +78,7 @@ type Image struct {
 	Width  string
 	Height string
 	Name   string
+	ZIndex int
 }
 
 type TextStyle struct {
@@ -89,8 +92,9 @@ type TextStyle struct {
 // New crea una nueva instancia de ODPGenerator con tamaño 16:9 por defecto
 func New() *ODPGenerator {
 	return &ODPGenerator{
-		Slides:    make([]Slide, 0),
-		SlideSize: defaultSize169,
+		Slides:     make([]Slide, 0),
+		SlideSize:  defaultSize169,
+		lastZIndex: 0,
 	}
 }
 
@@ -148,8 +152,18 @@ func (g *ODPGenerator) SetTextStyle(slide *Slide, fontSize float64, fontFamily, 
 	}
 }
 
+// getNextZIndex es una nueva función para obtener el siguiente Z-index
+func (g *ODPGenerator) getNextZIndex(customZIndex ...int) int {
+	nextZ := g.lastZIndex + 1
+	if len(customZIndex) > 0 {
+		nextZ = customZIndex[0]
+	}
+	g.lastZIndex = nextZ
+	return nextZ
+}
+
 // AddTextBox añade un cuadro de texto a la última diapositiva
-func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64) {
+func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, zIndex ...int) {
 	if len(g.Slides) == 0 {
 		g.AddBlankSlide()
 	}
@@ -160,13 +174,14 @@ func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, hei
 		Y:       fmt.Sprintf("%.2fcm", y),
 		Width:   fmt.Sprintf("%.2fcm", width),
 		Height:  fmt.Sprintf("%.2fcm", height),
-		Style:   slide.currentStyle, // Usar el estilo actual
+		Style:   slide.currentStyle,
+		ZIndex:  g.getNextZIndex(zIndex...),
 	})
 }
 
 // AddImage añade una imagen a la diapositiva especificada.
 // El parámetro extension debe incluir el punto (por ejemplo: ".jpg", ".png")
-func (g *ODPGenerator) AddImage(slide *Slide, imageData []byte, extension string, x, y, width, height float64) error {
+func (g *ODPGenerator) AddImage(slide *Slide, imageData []byte, extension string, x, y, width, height float64, zIndex ...int) error {
 	// Validar que el slide pertenece a esta presentación
 	slideIndex := -1
 	for i := range g.Slides {
@@ -228,6 +243,7 @@ func (g *ODPGenerator) AddImage(slide *Slide, imageData []byte, extension string
 		Width:  fmt.Sprintf("%.2fcm", width),
 		Height: fmt.Sprintf("%.2fcm", height),
 		Name:   imageName,
+		ZIndex: g.getNextZIndex(zIndex...),
 	})
 
 	return nil
@@ -606,6 +622,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 <draw:frame draw:style-name="gr2" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
+                           draw:z-index="{{.ZIndex}}"
                            presentation:class="outline">
                     <draw:text-box>
                         <text:p>
@@ -618,6 +635,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 <draw:frame draw:style-name="gr2" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
+                           draw:z-index="{{.ZIndex}}"
                            presentation:class="graphic">
                     <draw:image xlink:href="{{.Name}}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
                 </draw:frame>
