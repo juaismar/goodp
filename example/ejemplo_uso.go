@@ -58,13 +58,31 @@ func main() {
 
 	// Añadir cuadros de texto en diferentes posiciones
 	// Los parámetros son: contenido, x, y, ancho, alto (en centímetros)
-	presentacion.AddTextBox(silde2, "Texto en la esquina superior", 2, 2, 10, 2)
+	presentacion.SetTextStyle(silde2, 20, "Arial", "#000000", false, false)
+	presentacion.AddTextBox(silde2, "Texto en la esquina superior", 2, 2, 10, 2,
+		&goodp.TextProperties{
+			HorizontalAlign: "left",
+			VerticalAlign:   "top",
+		})
 
 	presentacion.SetTextStyle(silde2, 24, "Arial", "#FF0000", true, false) // Rojo, negrita
-	presentacion.AddTextBox(silde2, "Texto en el centro", 10, 8, 8, 4)
+	presentacion.AddTextBox(silde2, "Texto en el centro", 10, 8, 8, 4,
+		&goodp.TextProperties{
+			HorizontalAlign: "center",
+			VerticalAlign:   "middle",
+		})
 
 	presentacion.SetTextStyle(silde2, 18, "Times New Roman", "#0000FF", false, true) // Azul, cursiva
-	presentacion.AddTextBox(silde2, "Texto en la parte inferior", 15, 15, 10, 3)
+	presentacion.AddTextBox(silde2, "Texto en la parte inferior", 15, 15, 10, 3,
+		&goodp.TextProperties{
+			HorizontalAlign: "right",
+			VerticalAlign:   "bottom",
+		})
+	presentacion.AddTextBox(silde2, "Texto justificado", 2, 15, 10, 3,
+		&goodp.TextProperties{
+			HorizontalAlign: "justify",
+			VerticalAlign:   "middle",
+		})
 
 	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
 

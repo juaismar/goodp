@@ -68,7 +68,13 @@ type TextBox struct {
 	Width   string // Ancho en cm
 	Height  string // Alto en cm
 	Style   TextStyle
+	Props   *TextProperties // Cambiado a puntero para que sea opcional
 	ZIndex  int
+}
+
+type TextProperties struct {
+	HorizontalAlign string // "left", "center", "right", "justify"
+	VerticalAlign   string // "top", "middle", "bottom"
 }
 
 type Image struct {
@@ -163,7 +169,7 @@ func (g *ODPGenerator) getNextZIndex(customZIndex ...int) int {
 }
 
 // AddTextBox añade un cuadro de texto a la última diapositiva
-func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, zIndex ...int) {
+func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, props *TextProperties, zIndex ...int) {
 	if len(g.Slides) == 0 {
 		g.AddBlankSlide()
 	}
@@ -175,6 +181,7 @@ func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, hei
 		Width:   fmt.Sprintf("%.2fcm", width),
 		Height:  fmt.Sprintf("%.2fcm", height),
 		Style:   slide.currentStyle,
+		Props:   props,
 		ZIndex:  g.getNextZIndex(zIndex...),
 	})
 }
@@ -583,6 +590,21 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
         <style:style style:name="P2" style:family="paragraph">
             <style:paragraph-properties fo:text-align="left"/>
         </style:style>
+        <style:style style:name="P3" style:family="paragraph">
+            <style:paragraph-properties fo:text-align="right"/>
+        </style:style>
+        <style:style style:name="P4" style:family="paragraph">
+            <style:paragraph-properties fo:text-align="justify"/>
+        </style:style>
+        <style:style style:name="V1" style:family="graphic">
+            <style:graphic-properties draw:textarea-vertical-align="top"/>
+        </style:style>
+        <style:style style:name="V2" style:family="graphic">
+            <style:graphic-properties draw:textarea-vertical-align="middle"/>
+        </style:style>
+        <style:style style:name="V3" style:family="graphic">
+            <style:graphic-properties draw:textarea-vertical-align="bottom"/>
+        </style:style>
     </office:automatic-styles>
     <office:body>
         <office:presentation>
@@ -619,13 +641,13 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 </draw:frame>
                 {{end}}
                 {{range .TextBoxes}}
-                <draw:frame draw:style-name="gr2" draw:layer="layout"
+                <draw:frame draw:style-name="{{generateVerticalAlign .Props.VerticalAlign}}" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
                            draw:z-index="{{.ZIndex}}"
                            presentation:class="outline">
-                    <draw:text-box>
-                        <text:p>
+                    <draw:text-box text:anchor-type="paragraph">
+                        <text:p {{if and .Props .Props.HorizontalAlign}}text:style-name="{{generateTextAlign .Props.HorizontalAlign}}"{{end}}>
                             <text:span text:style-name="{{generateStyleName .Style}}">{{.Content}}</text:span>
                         </text:p>
                     </draw:text-box>
@@ -652,8 +674,32 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
 			styleCounter++
 			return fmt.Sprintf("T%d", styleCounter)
 		},
+		"generateTextAlign": func(align string) string {
+			switch align {
+			case "center":
+				return "P1"
+			case "right":
+				return "P3"
+			case "justify":
+				return "P4"
+			default:
+				return "P2" // left alignment por defecto
+			}
+		},
 		"sub": func(a, b float64) float64 {
 			return a - b
+		},
+		"generateVerticalAlign": func(align string) string {
+			switch align {
+			case "top":
+				return "V1"
+			case "middle":
+				return "V2"
+			case "bottom":
+				return "V3"
+			default:
+				return "gr2" // default style sin alineación vertical
+			}
 		},
 	}).Parse(contentTemplate)
 	if err != nil {
