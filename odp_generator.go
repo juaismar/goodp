@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -93,6 +94,13 @@ type TextStyle struct {
 	Color      string
 	Bold       bool
 	Italic     bool
+}
+
+// Añadir esta nueva estructura para manejar elementos ordenables
+type DrawableElement struct {
+	Type   string // "textbox" o "image"
+	ZIndex int
+	Data   interface{} // TextBox o Image
 }
 
 // New crea una nueva instancia de ODPGenerator con tamaño 16:9 por defecto
@@ -641,27 +649,32 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                     </draw:text-box>
                 </draw:frame>
                 {{end}}
-                {{range .TextBoxes}}
-                <draw:frame draw:style-name="{{if and .Props .Props.VerticalAlign}}{{generateVerticalAlign .Props.VerticalAlign}}{{else}}gr2{{end}}" draw:layer="layout"
-                           svg:width="{{.Width}}" svg:height="{{.Height}}" 
-                           svg:x="{{.X}}" svg:y="{{.Y}}"
-                           draw:z-index="{{.ZIndex}}"
-                           presentation:class="outline">
-                    <draw:text-box text:anchor-type="paragraph">
-                        <text:p {{if and .Props .Props.HorizontalAlign}}text:style-name="{{generateTextAlign .Props.HorizontalAlign}}"{{end}}>
-                            <text:span text:style-name="{{generateStyleName .Style}}">{{.Content}}</text:span>
-                        </text:p>
-                    </draw:text-box>
-                </draw:frame>
-                {{end}}
-                {{range .Images}}
-                <draw:frame draw:style-name="gr2" draw:layer="layout"
-                           svg:width="{{.Width}}" svg:height="{{.Height}}" 
-                           svg:x="{{.X}}" svg:y="{{.Y}}"
-                           draw:z-index="{{.ZIndex}}"
-                           presentation:class="graphic">
-                    <draw:image xlink:href="{{.Name}}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
-                </draw:frame>
+                {{range .SortedElements}}
+                    {{if eq .Type "textbox"}}
+                    {{with .Data}}
+                    <draw:frame draw:style-name="{{if and .Props .Props.VerticalAlign}}{{generateVerticalAlign .Props.VerticalAlign}}{{else}}gr2{{end}}" draw:layer="layout"
+                               svg:width="{{.Width}}" svg:height="{{.Height}}" 
+                               svg:x="{{.X}}" svg:y="{{.Y}}"
+                               draw:z-index="{{.ZIndex}}"
+                               presentation:class="outline">
+                        <draw:text-box text:anchor-type="paragraph">
+                            <text:p {{if and .Props .Props.HorizontalAlign}}text:style-name="{{generateTextAlign .Props.HorizontalAlign}}"{{end}}>
+                                <text:span text:style-name="{{generateStyleName .Style}}">{{.Content}}</text:span>
+                            </text:p>
+                        </draw:text-box>
+                    </draw:frame>
+                    {{end}}
+                    {{else}}
+                    {{with .Data}}
+                    <draw:frame draw:style-name="gr2" draw:layer="layout"
+                               svg:width="{{.Width}}" svg:height="{{.Height}}" 
+                               svg:x="{{.X}}" svg:y="{{.Y}}"
+                               draw:z-index="{{.ZIndex}}"
+                               presentation:class="graphic">
+                        <draw:image xlink:href="{{.Name}}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
+                    </draw:frame>
+                    {{end}}
+                    {{end}}
                 {{end}}
             </draw:page>
             {{end}}
@@ -880,4 +893,34 @@ func (g *ODPGenerator) writeManifest(writer io.Writer) error {
 		return err
 	}
 	return tmpl.Execute(writer, g)
+}
+
+// Añadir este método a la estructura Slide
+func (s *Slide) SortedElements() []DrawableElement {
+	elements := make([]DrawableElement, 0, len(s.TextBoxes)+len(s.Images))
+
+	// Añadir TextBoxes
+	for _, tb := range s.TextBoxes {
+		elements = append(elements, DrawableElement{
+			Type:   "textbox",
+			ZIndex: tb.ZIndex,
+			Data:   tb,
+		})
+	}
+
+	// Añadir Images
+	for _, img := range s.Images {
+		elements = append(elements, DrawableElement{
+			Type:   "image",
+			ZIndex: img.ZIndex,
+			Data:   img,
+		})
+	}
+
+	// Ordenar elementos por ZIndex
+	sort.Slice(elements, func(i, j int) bool {
+		return elements[i].ZIndex < elements[j].ZIndex
+	})
+
+	return elements
 }
