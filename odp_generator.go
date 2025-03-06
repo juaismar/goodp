@@ -168,7 +168,10 @@ func (g *ODPGenerator) getNextZIndex(customZIndex ...int) int {
 	return nextZ
 }
 
-// AddTextBox añade un cuadro de texto a la última diapositiva
+// AddTextBox añade un cuadro de texto a la diapositiva especificada.
+// Los parámetros x, y, width y height están en centímetros.
+// props puede ser nil para usar la alineación por defecto (izquierda y superior).
+// Si se especifica zIndex, se usará ese valor; de lo contrario se asignará automáticamente.
 func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, props *TextProperties, zIndex ...int) {
 	if len(g.Slides) == 0 {
 		g.AddBlankSlide()
@@ -641,7 +644,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                 </draw:frame>
                 {{end}}
                 {{range .TextBoxes}}
-                <draw:frame draw:style-name="{{generateVerticalAlign .Props.VerticalAlign}}" draw:layer="layout"
+                <draw:frame draw:style-name="{{if and .Props .Props.VerticalAlign}}{{generateVerticalAlign .Props.VerticalAlign}}{{else}}gr2{{end}}" draw:layer="layout"
                            svg:width="{{.Width}}" svg:height="{{.Height}}" 
                            svg:x="{{.X}}" svg:y="{{.Y}}"
                            draw:z-index="{{.ZIndex}}"

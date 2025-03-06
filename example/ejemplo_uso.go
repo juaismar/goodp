@@ -91,6 +91,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	presentacion.AddTextBox(silde4, "Texto sin props", 2, 15, 10, 3, nil)
 
 	// Guardar la presentación
 	err = presentacion.Save("Presentacion.odp")
