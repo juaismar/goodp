@@ -49,7 +49,6 @@ type ODPGenerator struct {
 	Slides     []Slide
 	SlideSize  SlideSize
 	Background *Background
-	lastZIndex int // Nuevo campo para trackear el último Z-index
 }
 
 type Slide struct {
@@ -59,6 +58,7 @@ type Slide struct {
 	Images       []Image
 	currentStyle TextStyle
 	Background   *Background
+	lastZIndex   int // To increase Z-index
 }
 
 type TextBox struct {
@@ -98,9 +98,8 @@ type TextStyle struct {
 // New crea una nueva instancia de ODPGenerator con tamaño 16:9 por defecto
 func New() *ODPGenerator {
 	return &ODPGenerator{
-		Slides:     make([]Slide, 0),
-		SlideSize:  defaultSize169,
-		lastZIndex: 0,
+		Slides:    make([]Slide, 0),
+		SlideSize: defaultSize169,
 	}
 }
 
@@ -152,10 +151,6 @@ func (g *ODPGenerator) AddBlankSlide() *Slide {
 
 // SetTextStyle establece el estilo para el próximo texto que se añada
 func (g *ODPGenerator) SetTextStyle(slide *Slide, fontSize float64, fontFamily, color string, bold, italic bool) {
-	if len(g.Slides) == 0 {
-		g.AddBlankSlide()
-	}
-
 	slide.currentStyle = TextStyle{
 		FontSize:   fmt.Sprintf("%.2fpt", fontSize),
 		FontFamily: fontFamily,
@@ -166,12 +161,12 @@ func (g *ODPGenerator) SetTextStyle(slide *Slide, fontSize float64, fontFamily, 
 }
 
 // getNextZIndex es una nueva función para obtener el siguiente Z-index
-func (g *ODPGenerator) getNextZIndex(customZIndex ...int) int {
-	nextZ := g.lastZIndex + 1
+func (s *Slide) getNextZIndex(customZIndex ...int) int {
+	nextZ := s.lastZIndex + 1
 	if len(customZIndex) > 0 {
 		nextZ = customZIndex[0]
 	}
-	g.lastZIndex = nextZ
+	s.lastZIndex = nextZ
 	return nextZ
 }
 
@@ -180,10 +175,6 @@ func (g *ODPGenerator) getNextZIndex(customZIndex ...int) int {
 // props puede ser nil para usar la alineación por defecto (izquierda y superior).
 // Si se especifica zIndex, se usará ese valor; de lo contrario se asignará automáticamente.
 func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, props *TextProperties, zIndex ...int) {
-	if len(g.Slides) == 0 {
-		g.AddBlankSlide()
-	}
-
 	slide.TextBoxes = append(slide.TextBoxes, TextBox{
 		Content: escapeXML(content),
 		X:       fmt.Sprintf("%.2fcm", x),
@@ -192,7 +183,7 @@ func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, hei
 		Height:  fmt.Sprintf("%.2fcm", height),
 		Style:   slide.currentStyle,
 		Props:   props,
-		ZIndex:  g.getNextZIndex(zIndex...),
+		ZIndex:  slide.getNextZIndex(zIndex...),
 	})
 }
 
@@ -260,7 +251,7 @@ func (g *ODPGenerator) AddImage(slide *Slide, imageData []byte, extension string
 		Width:  fmt.Sprintf("%.2fcm", width),
 		Height: fmt.Sprintf("%.2fcm", height),
 		Name:   imageName,
-		ZIndex: g.getNextZIndex(zIndex...),
+		ZIndex: slide.getNextZIndex(zIndex...),
 	})
 
 	return nil
