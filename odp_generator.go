@@ -125,11 +125,18 @@ func (g *ODPGenerator) SetCustomSlideSize(width, height float64) {
 	}
 }
 
+// escapeXML escapa los caracteres especiales de XML
+func escapeXML(text string) string {
+
+	text = strings.ReplaceAll(text, "\n", "<text:line-break/>")
+	return strings.ReplaceAll(text, "&", "&amp;")
+}
+
 // AddSlide añade una nueva diapositiva a la presentación y devuelve un puntero a ella
 func (g *ODPGenerator) AddSlide(title string, content string) *Slide {
 	g.Slides = append(g.Slides, Slide{
-		Title:   title,
-		Content: content,
+		Title:   escapeXML(title),
+		Content: escapeXML(content),
 	})
 	return &g.Slides[len(g.Slides)-1]
 }
@@ -178,7 +185,7 @@ func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, hei
 	}
 
 	slide.TextBoxes = append(slide.TextBoxes, TextBox{
-		Content: content,
+		Content: escapeXML(content),
 		X:       fmt.Sprintf("%.2fcm", x),
 		Y:       fmt.Sprintf("%.2fcm", y),
 		Width:   fmt.Sprintf("%.2fcm", width),

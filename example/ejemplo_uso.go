@@ -86,12 +86,12 @@ func main() {
 
 	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
 
-	silde4 := presentacion.AddSlide("Cuarta página", "")
+	silde4 := presentacion.AddSlide("Cuarta página & %$/()=!?ç", "")
 	err = presentacion.SetSlideBackgroundColor(silde4, "#0000FF") // Fondo azul para esta diapositiva
 	if err != nil {
 		log.Fatal(err)
 	}
-	presentacion.AddTextBox(silde4, "Texto sin props", 2, 15, 10, 3, nil)
+	presentacion.AddTextBox(silde4, "Texto sin props\n salto de linea", 2, 15, 10, 3, nil)
 
 	// Guardar la presentación
 	err = presentacion.Save("Presentacion.odp")
