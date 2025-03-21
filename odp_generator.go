@@ -74,8 +74,11 @@ type TextBox struct {
 }
 
 type TextProperties struct {
-	HorizontalAlign string // "left", "center", "right", "justify"
-	VerticalAlign   string // "top", "middle", "bottom"
+	HorizontalAlign string  // "left", "center", "right", "justify"
+	VerticalAlign   string  // "top", "middle", "bottom"
+	LeftIndent      float64 // Sangría izquierda en cm
+	RightIndent     float64 // Sangría derecha en cm
+	FirstLineIndent float64 // Sangría de primera línea en cm
 }
 
 type Image struct {
