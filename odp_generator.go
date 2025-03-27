@@ -509,6 +509,40 @@ func (g *ODPGenerator) Save(filename string) error {
 	return os.WriteFile(filename, data, 0644)
 }
 
+// generateStyleName genera un identificador único para un estilo de texto
+func generateStyleName(style TextStyle) string {
+	// Crear un identificador único basado en las propiedades del estilo
+	parts := []string{"T"}
+
+	// Añadir tamaño de fuente (reemplazar puntos por guiones bajos)
+	if style.FontSize != "" {
+		parts = append(parts, strings.ReplaceAll(style.FontSize, ".", "_"))
+	}
+
+	// Añadir familia de fuente (reemplazar espacios por guiones bajos)
+	if style.FontFamily != "" {
+		parts = append(parts, strings.ReplaceAll(style.FontFamily, " ", "_"))
+	}
+
+	// Añadir color (eliminar el # y convertir a minúsculas)
+	if style.Color != "" {
+		color := strings.ToLower(strings.TrimPrefix(style.Color, "#"))
+		parts = append(parts, color)
+	}
+
+	// Añadir negrita y cursiva
+	if style.Bold {
+		parts = append(parts, "bold")
+	}
+	if style.Italic {
+		parts = append(parts, "italic")
+	}
+
+	// Unir todas las partes con guiones bajos
+	return strings.Join(parts, "_")
+}
+
+// Modificar writeContent para usar la función extraída
 func (g *ODPGenerator) writeContent(writer io.Writer) error {
 	const contentTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content 
@@ -731,14 +765,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
 			// Crear un ID único combinando slide, zindex y propiedades
 			return fmt.Sprintf("P%d_%d_%s", slideIndex, textboxZIndex, strings.Join(parts, "_"))
 		},
-		"generateStyleName": func(style TextStyle) string {
-			return fmt.Sprintf("%s %s %s %s %s",
-				style.FontSize,
-				style.FontFamily,
-				style.Color,
-				style.Bold,
-				style.Italic)
-		},
+		"generateStyleName": generateStyleName,
 	}).Parse(contentTemplate)
 	if err != nil {
 		return err
@@ -769,7 +796,7 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
         {{range .Slides}}
             {{range .TextBoxes}}
                 {{$counter = inc $counter}}
-                <style:style style:name="T{{$counter}}" style:family="text">
+                <style:style style:name="{{generateStyleName .Style}}" style:family="text">
                     <style:text-properties
                         {{if .Style.FontFamily}}fo:font-family="{{.Style.FontFamily}}"{{end}}
                         {{if .Style.FontSize}}fo:font-size="{{.Style.FontSize}}"{{end}}
@@ -809,6 +836,7 @@ func (g *ODPGenerator) writeStyles(writer io.Writer) error {
 		"inc": func(i int) int {
 			return i + 1
 		},
+		"generateStyleName": generateStyleName,
 	}).Parse(stylesTemplate)
 	if err != nil {
 		return err
