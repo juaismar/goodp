@@ -78,7 +78,7 @@ func main() {
 			HorizontalAlign: "right",
 			VerticalAlign:   "bottom",
 		})
-	presentacion.AddTextBox(silde2, "Texto justificado", 2, 15, 10, 3,
+	presentacion.AddTextBox(silde2, "Texto justificado en medio a la izquierda", 2, 15, 10, 3,
 		&goodp.TextProperties{
 			HorizontalAlign: "justify",
 			VerticalAlign:   "middle",
