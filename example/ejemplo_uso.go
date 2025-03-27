@@ -78,7 +78,7 @@ func main() {
 			HorizontalAlign: "right",
 			VerticalAlign:   "bottom",
 		})
-	presentacion.AddTextBox(silde2, "Texto justificado", 2, 15, 10, 3,
+	presentacion.AddTextBox(silde2, "Texto justificado en medio a la izquierda", 2, 15, 10, 3,
 		&goodp.TextProperties{
 			HorizontalAlign: "justify",
 			VerticalAlign:   "middle",
@@ -92,6 +92,15 @@ func main() {
 		log.Fatal(err)
 	}
 	presentacion.AddTextBox(silde4, "Texto sin props\n salto de linea", 2, 15, 10, 3, nil)
+
+	presentacion.AddTextBox(silde4, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		10, 3, 10, 3, &goodp.TextProperties{
+			HorizontalAlign: "justify",
+			VerticalAlign:   "top",
+			LeftIndent:      0,
+			RightIndent:     0,
+			FirstLineIndent: 0,
+		})
 
 	// Guardar la presentación
 	err = presentacion.Save("Presentacion.odp")

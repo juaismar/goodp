@@ -74,8 +74,11 @@ type TextBox struct {
 }
 
 type TextProperties struct {
-	HorizontalAlign string // "left", "center", "right", "justify"
-	VerticalAlign   string // "top", "middle", "bottom"
+	HorizontalAlign string  // "left", "center", "right", "justify"
+	VerticalAlign   string  // "top", "middle", "bottom"
+	LeftIndent      float64 // Sangría izquierda en cm
+	RightIndent     float64 // Sangría derecha en cm
+	FirstLineIndent float64 // Sangría de primera línea en cm
 }
 
 type Image struct {
@@ -593,18 +596,11 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
         <style:style style:name="gr2" style:family="graphic">
             <style:graphic-properties draw:stroke="none" draw:fill="none"/>
         </style:style>
-        <style:style style:name="P1" style:family="paragraph">
-            <style:paragraph-properties fo:text-align="center"/>
-        </style:style>
-        <style:style style:name="P2" style:family="paragraph">
+
+        <style:style style:name="Pdefault" style:family="paragraph">
             <style:paragraph-properties fo:text-align="left"/>
         </style:style>
-        <style:style style:name="P3" style:family="paragraph">
-            <style:paragraph-properties fo:text-align="right"/>
-        </style:style>
-        <style:style style:name="P4" style:family="paragraph">
-            <style:paragraph-properties fo:text-align="justify"/>
-        </style:style>
+  
         <style:style style:name="V1" style:family="graphic">
             <style:graphic-properties draw:textarea-vertical-align="top"/>
         </style:style>
@@ -614,13 +610,30 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
         <style:style style:name="V3" style:family="graphic">
             <style:graphic-properties draw:textarea-vertical-align="bottom"/>
         </style:style>
+		{{range $slideIndex, $slide := .Slides}}
+            {{range $textboxIndex, $textbox := .TextBoxes}}
+                {{if .Props}}
+                    {{$styleID := generateParaStyleID $slideIndex .ZIndex .Props}}
+                    {{if ne $styleID "Pdefault"}}
+                    <style:style style:name="{{$styleID}}" style:family="paragraph">
+                        <style:paragraph-properties 
+                            fo:margin-left="{{printf "%.2fcm" .Props.LeftIndent}}"
+                            fo:margin-right="{{printf "%.2fcm" .Props.RightIndent}}"
+                            fo:text-indent="{{printf "%.2fcm" .Props.FirstLineIndent}}"
+                            {{if .Props.HorizontalAlign}}fo:text-align="{{.Props.HorizontalAlign}}"{{end}}
+                        />
+                    </style:style>
+                    {{end}}
+                {{end}}
+            {{end}}
+        {{end}}
     </office:automatic-styles>
     <office:body>
         <office:presentation>
-            {{range $index, $slide := .Slides}}
-            <draw:page draw:name="page{{$index}}" 
+            {{range $slideIndex, $slide := .Slides}}
+            <draw:page draw:name="page{{$slideIndex}}" 
                       {{if $slide.Background}}
-                      draw:style-name="slideBackground{{$index}}"
+                      draw:style-name="slideBackground{{$slideIndex}}"
                       {{else if $.Background}}
                       draw:style-name="backgroundStyle"
                       {{else}}
@@ -628,13 +641,13 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                       {{end}}
                       draw:master-page-name="Default">
                 {{if .Title}}
-                <draw:frame draw:style-name="gr1" draw:text-style-name="P1" draw:layer="layout" 
+                <draw:frame draw:style-name="gr1" draw:text-style-name="Pdefault" draw:layer="layout" 
                            svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
                            svg:height="3.506cm" 
                            svg:x="2cm" svg:y="1cm"
                            presentation:class="title">
                     <draw:text-box>
-                        <text:p text:style-name="P1">{{.Title}}</text:p>
+                        <text:p text:style-name="Pdefault">{{.Title}}</text:p>
                     </draw:text-box>
                 </draw:frame>
                 {{end}}
@@ -658,7 +671,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                                draw:z-index="{{.ZIndex}}"
                                presentation:class="outline">
                         <draw:text-box text:anchor-type="paragraph">
-                            <text:p {{if and .Props .Props.HorizontalAlign}}text:style-name="{{generateTextAlign .Props.HorizontalAlign}}"{{end}}>
+                            <text:p text:style-name="{{generateParaStyleID $slideIndex .ZIndex .Props}}">
                                 <text:span text:style-name="{{generateStyleName .Style}}">{{.Content}}</text:span>
                             </text:p>
                         </draw:text-box>
@@ -681,25 +694,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
         </office:presentation>
     </office:body>
 </office:document-content>`
-
-	styleCounter := 0
 	tmpl, err := template.New("content").Funcs(template.FuncMap{
-		"generateStyleName": func(style TextStyle) string {
-			styleCounter++
-			return fmt.Sprintf("T%d", styleCounter)
-		},
-		"generateTextAlign": func(align string) string {
-			switch align {
-			case "center":
-				return "P1"
-			case "right":
-				return "P3"
-			case "justify":
-				return "P4"
-			default:
-				return "P2" // left alignment por defecto
-			}
-		},
 		"sub": func(a, b float64) float64 {
 			return a - b
 		},
@@ -714,6 +709,35 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
 			default:
 				return "gr2" // default style sin alineación vertical
 			}
+		},
+		"generateParaStyleID": func(slideIndex int, textboxZIndex int, props *TextProperties) string {
+			// Crear un identificador único basado en las propiedades
+			var parts []string
+
+			if props != nil {
+				if props.HorizontalAlign != "" {
+					parts = append(parts, fmt.Sprintf("h%s", props.HorizontalAlign))
+				}
+				parts = append(parts, fmt.Sprintf("l%.2f", props.LeftIndent))
+				parts = append(parts, fmt.Sprintf("r%.2f", props.RightIndent))
+				parts = append(parts, fmt.Sprintf("f%.2f", props.FirstLineIndent))
+			}
+
+			// Si no hay propiedades especiales, usar un identificador base
+			if len(parts) == 0 {
+				return "Pdefault"
+			}
+
+			// Crear un ID único combinando slide, zindex y propiedades
+			return fmt.Sprintf("P%d_%d_%s", slideIndex, textboxZIndex, strings.Join(parts, "_"))
+		},
+		"generateStyleName": func(style TextStyle) string {
+			return fmt.Sprintf("%s %s %s %s %s",
+				style.FontSize,
+				style.FontFamily,
+				style.Color,
+				style.Bold,
+				style.Italic)
 		},
 	}).Parse(contentTemplate)
 	if err != nil {
