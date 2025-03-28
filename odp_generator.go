@@ -53,13 +53,11 @@ type ODPGenerator struct {
 }
 
 type Slide struct {
-	Title        string
-	Content      string
 	TextBoxes    []TextBox
 	Images       []Image
 	currentStyle TextStyle
 	Background   *Background
-	lastZIndex   int // To increase Z-index
+	lastZIndex   int
 }
 
 type TextBox struct {
@@ -144,19 +142,58 @@ func escapeXML(text string) string {
 
 // AddSlide añade una nueva diapositiva a la presentación y devuelve un puntero a ella
 func (g *ODPGenerator) AddSlide(title string, content string) *Slide {
-	g.Slides = append(g.Slides, Slide{
-		Title:   escapeXML(title),
-		Content: escapeXML(content),
-	})
+	slide := &Slide{}
+
+	// Crear TextBox para el título
+	if title != "" {
+		// Estilo por defecto para títulos
+		slide.currentStyle = TextStyle{
+			FontSize:   "32pt",
+			FontFamily: "Liberation Sans",
+			Color:      "#000000",
+			Bold:       true,
+		}
+
+		// TextBox del título (posicionado en la parte superior)
+		g.AddTextBox(slide, title,
+			2,                   // x: 2cm desde el borde izquierdo
+			1,                   // y: 1cm desde el borde superior
+			g.SlideSize.Width-4, // ancho: ancho total - 4cm de márgenes
+			3.506,               // alto: 3.506cm para el título
+			&TextProperties{
+				HorizontalAlign: "center",
+				VerticalAlign:   "middle",
+			})
+	}
+
+	// Crear TextBox para el contenido
+	if content != "" {
+		// Estilo por defecto para contenido
+		slide.currentStyle = TextStyle{
+			FontSize:   "18pt",
+			FontFamily: "Liberation Sans",
+			Color:      "#000000",
+		}
+
+		// TextBox del contenido (debajo del título)
+		g.AddTextBox(slide, content,
+			2,                   // x: 2cm desde el borde izquierdo
+			5.5,                 // y: 5.5cm desde el borde superior
+			g.SlideSize.Width-4, // ancho: ancho total - 4cm de márgenes
+			13.23,               // alto: 13.23cm para el contenido
+			&TextProperties{
+				HorizontalAlign: "left",
+				VerticalAlign:   "top",
+			})
+	}
+
+	g.Slides = append(g.Slides, *slide)
 	return &g.Slides[len(g.Slides)-1]
 }
 
 // AddBlankSlide añade una diapositiva en blanco a la presentación y devuelve un puntero a ella
 func (g *ODPGenerator) AddBlankSlide() *Slide {
-	g.Slides = append(g.Slides, Slide{
-		Title:   "",
-		Content: "",
-	})
+	g.Slides = append(g.Slides, Slide{})
 	return &g.Slides[len(g.Slides)-1]
 }
 
@@ -181,11 +218,24 @@ func (s *Slide) getNextZIndex(customZIndex ...int) int {
 	return nextZ
 }
 
-// AddTextBox añade un cuadro de texto a la diapositiva especificada.
-// Los parámetros x, y, width y height están en centímetros.
-// props puede ser nil para usar la alineación por defecto (izquierda y superior).
-// Si se especifica zIndex, se usará ese valor; de lo contrario se asignará automáticamente.
+// Añadir esta función para crear TextProperties con valores por defecto
+func NewDefaultTextProperties() *TextProperties {
+	return &TextProperties{
+		HorizontalAlign: "left", // Alineación horizontal por defecto
+		VerticalAlign:   "top",  // Alineación vertical por defecto
+		LeftIndent:      0,      // Sin sangría izquierda
+		RightIndent:     0,      // Sin sangría derecha
+		FirstLineIndent: 0,      // Sin sangría de primera línea
+	}
+}
+
+// Modificar AddTextBox para inicializar props si es nil
 func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, props *TextProperties, zIndex ...int) {
+	// Si props es nil, usar valores por defecto
+	if props == nil {
+		props = NewDefaultTextProperties()
+	}
+
 	slide.TextBoxes = append(slide.TextBoxes, TextBox{
 		Content: escapeXML(content),
 		X:       fmt.Sprintf("%.2fcm", x),
@@ -674,28 +724,6 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                       draw:style-name="dp1"
                       {{end}}
                       draw:master-page-name="Default">
-                {{if .Title}}
-                <draw:frame draw:style-name="gr1" draw:text-style-name="Pdefault" draw:layer="layout" 
-                           svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
-                           svg:height="3.506cm" 
-                           svg:x="2cm" svg:y="1cm"
-                           presentation:class="title">
-                    <draw:text-box>
-                        <text:p text:style-name="Pdefault">{{.Title}}</text:p>
-                    </draw:text-box>
-                </draw:frame>
-                {{end}}
-                {{if .Content}}
-                <draw:frame draw:style-name="gr2" draw:text-style-name="P2" draw:layer="layout"
-                           svg:width="{{printf "%.2fcm" (sub $.SlideSize.Width 4.0)}}" 
-                           svg:height="13.23cm" 
-                           svg:x="2cm" svg:y="5.5cm"
-                           presentation:class="outline">
-                    <draw:text-box>
-                        <text:p text:style-name="P2">{{.Content}}</text:p>
-                    </draw:text-box>
-                </draw:frame>
-                {{end}}
                 {{range .SortedElements}}
                     {{if eq .Type "textbox"}}
                     {{with .Data}}
