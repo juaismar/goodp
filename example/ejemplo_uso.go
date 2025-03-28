@@ -84,6 +84,8 @@ func main() {
 			VerticalAlign:   "middle",
 		})
 
+	presentacion.AddTextBox(silde2, "Texto sin props\n salto de linea", 15, 2, 10, 3, nil)
+
 	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
 
 	silde4 := presentacion.AddSlide("Cuarta página & %$/()=!?ç", "")
@@ -91,15 +93,31 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	presentacion.AddTextBox(silde4, "Texto sin props\n salto de linea", 2, 15, 10, 3, nil)
 
 	presentacion.AddTextBox(silde4, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-		10, 3, 10, 3, &goodp.TextProperties{
+		3, 3, 10, 3, &goodp.TextProperties{
 			HorizontalAlign: "justify",
 			VerticalAlign:   "top",
 			LeftIndent:      0,
 			RightIndent:     0,
 			FirstLineIndent: 0,
+		})
+
+	presentacion.AddTextBox(silde4, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		20, 3, 10, 3, &goodp.TextProperties{
+			HorizontalAlign: "justify",
+			VerticalAlign:   "top",
+		})
+	presentacion.AddTextBox(silde4, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		20, 10, 10, 3, nil)
+
+	presentacion.AddTextBox(silde4, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		3, 10, 10, 3, &goodp.TextProperties{
+			HorizontalAlign: "justify",
+			VerticalAlign:   "top",
+			LeftIndent:      1,
+			RightIndent:     0.5,
+			FirstLineIndent: 2,
 		})
 
 	// Guardar la presentación
