@@ -84,9 +84,7 @@ func main() {
 			VerticalAlign:   "middle",
 		})
 
-	presentacion.AddTextBox(silde2, "Texto sin props\n salto de linea", 15, 2, 10, 3, nil)
-
-	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉")
+	presentacion.AddSlide("Tercera página", "Your name is 宮水 三葉\n My name is 立花 瀧")
 
 	silde4 := presentacion.AddSlide("Cuarta página & %$/()=!?ç", "")
 	err = presentacion.SetSlideBackgroundColor(silde4, "#0000FF") // Fondo azul para esta diapositiva

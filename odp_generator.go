@@ -181,11 +181,24 @@ func (s *Slide) getNextZIndex(customZIndex ...int) int {
 	return nextZ
 }
 
-// AddTextBox añade un cuadro de texto a la diapositiva especificada.
-// Los parámetros x, y, width y height están en centímetros.
-// props puede ser nil para usar la alineación por defecto (izquierda y superior).
-// Si se especifica zIndex, se usará ese valor; de lo contrario se asignará automáticamente.
+// Añadir esta función para crear TextProperties con valores por defecto
+func NewDefaultTextProperties() *TextProperties {
+	return &TextProperties{
+		HorizontalAlign: "left", // Alineación horizontal por defecto
+		VerticalAlign:   "top",  // Alineación vertical por defecto
+		LeftIndent:      0,      // Sin sangría izquierda
+		RightIndent:     0,      // Sin sangría derecha
+		FirstLineIndent: 0,      // Sin sangría de primera línea
+	}
+}
+
+// Modificar AddTextBox para inicializar props si es nil
 func (g *ODPGenerator) AddTextBox(slide *Slide, content string, x, y, width, height float64, props *TextProperties, zIndex ...int) {
+	// Si props es nil, usar valores por defecto
+	if props == nil {
+		props = NewDefaultTextProperties()
+	}
+
 	slide.TextBoxes = append(slide.TextBoxes, TextBox{
 		Content: escapeXML(content),
 		X:       fmt.Sprintf("%.2fcm", x),
