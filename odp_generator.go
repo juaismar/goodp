@@ -674,9 +674,7 @@ func (g *ODPGenerator) writeContent(writer io.Writer) error {
                                          presentation:display-page-number="false"
                                          presentation:display-date-time="true"/>
         </style:style>
-        <style:style style:name="gr1" style:family="graphic">
-            <style:graphic-properties draw:stroke="none" draw:fill="none" draw:textarea-horizontal-align="center"/>
-        </style:style>
+
         <style:style style:name="gr2" style:family="graphic">
             <style:graphic-properties draw:stroke="none" draw:fill="none"/>
         </style:style>
